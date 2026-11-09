@@ -1,9 +1,10 @@
 // 一张"纯比例驱动"的网格。零硬编码像素。
-//   - 列数 = 容器宽高比决定
+//   - 列数 = 容器宽高比决定（可用 baseColumns 或 baseRows 描述基准）
 //   - 间距 = 列宽 × gapRatio
 //   - item 宽高比 = 调用方直接传 childAspectRatio
 //
-// 所有数值参数（baseColumns / baseRatio / gapRatio / childAspectRatio）都是相对量，不是像素。
+// 所有数值参数（baseColumns / baseRows / baseRatio / gapRatio / childAspectRatio）
+// 都是相对量，不是像素。
 
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -31,13 +32,39 @@ class _GridDefaults {
   static const int maxColumns = 6;
 }
 
+/// 按容器宽高比解析交叉轴列数。
+///
+/// [baseColumns] 与 [baseRows] 二选一：
+/// - 传 [baseColumns]（或都不传，默认 `2`）时，列数随宽高比增大而增大；
+/// - 传 [baseRows] 时反转轴，列数随宽高比增大而减小，
+///   且在基准宽高比下的可见行数为 [baseRows]。
+int _resolveCrossAxisCount({
+  required double ratio,
+  required int? baseColumns,
+  required int? baseRows,
+  required double baseRatio,
+  required int minColumns,
+  required int maxColumns,
+}) {
+  assert(
+    baseColumns == null || baseRows == null,
+    'baseColumns 与 baseRows 只能二选一。',
+  );
+
+  final raw = baseRows != null
+      ? baseRows * (baseRatio / ratio)
+      : (baseColumns ?? _GridDefaults.baseColumns) * (ratio / baseRatio);
+  return raw.clamp(minColumns, maxColumns).round();
+}
+
 /// 1. 标准版（等高 item，列数 / 间距 / item 比例全部派生）
 class AspectDrivenGrid extends StatelessWidget {
   const AspectDrivenGrid({
     super.key,
     required this.itemCount,
     required this.itemBuilder,
-    this.baseColumns = _GridDefaults.baseColumns,
+    this.baseColumns,
+    this.baseRows,
     this.baseRatio = _GridDefaults.baseRatio,
     this.gapRatio = _GridDefaults.gapRatio,
     this.childAspectRatio = _GridDefaults.childAspectRatio,
@@ -51,8 +78,12 @@ class AspectDrivenGrid extends StatelessWidget {
   final int itemCount;
   final IndexedWidgetBuilder itemBuilder;
 
-  /// 参数语义与默认值见 [_GridDefaults]
-  final int baseColumns;
+  /// 基准宽高比下的列数，默认 `2`；与 [baseRows] 二选一
+  final int? baseColumns;
+
+  /// 基准宽高比下的行数；设置后反转轴，与 [baseColumns] 二选一
+  final int? baseRows;
+
   final double baseRatio;
   final double gapRatio;
   final double childAspectRatio;
@@ -74,9 +105,14 @@ class AspectDrivenGrid extends StatelessWidget {
           '不要直接放进 SingleChildScrollView 或 ListView。',
         );
         final ratio = c.maxWidth / c.maxHeight;
-        final cols = (baseColumns * (ratio / baseRatio))
-            .clamp(minColumns, maxColumns)
-            .round();
+        final cols = _resolveCrossAxisCount(
+          ratio: ratio,
+          baseColumns: baseColumns,
+          baseRows: baseRows,
+          baseRatio: baseRatio,
+          minColumns: minColumns,
+          maxColumns: maxColumns,
+        );
         final gap = (c.maxWidth / cols) * gapRatio;
 
         return GridView.builder(
@@ -104,7 +140,8 @@ class SliverAspectDrivenGrid extends StatelessWidget {
     super.key,
     required this.itemCount,
     required this.itemBuilder,
-    this.baseColumns = _GridDefaults.baseColumns,
+    this.baseColumns,
+    this.baseRows,
     this.baseRatio = _GridDefaults.baseRatio,
     this.gapRatio = _GridDefaults.gapRatio,
     this.childAspectRatio = _GridDefaults.childAspectRatio,
@@ -115,9 +152,12 @@ class SliverAspectDrivenGrid extends StatelessWidget {
   final int itemCount;
   final IndexedWidgetBuilder itemBuilder;
 
-  /// 基准宽高比下的列数;基准宽高比;间距 = 列宽 × gapRatio;
-  /// item 自身宽/高比(见 [_GridDefaults])。全部是相对量,不是像素。
-  final int baseColumns;
+  /// 基准宽高比下的列数，默认 `2`；与 [baseRows] 二选一
+  final int? baseColumns;
+
+  /// 基准宽高比下的行数；设置后反转轴，与 [baseColumns] 二选一
+  final int? baseRows;
+
   final double baseRatio;
   final double gapRatio;
   final double childAspectRatio;
@@ -132,9 +172,14 @@ class SliverAspectDrivenGrid extends StatelessWidget {
       builder: (context, c) {
         // 可视宽高 = viewport 宽 × viewport 高(始终有界)
         final ratio = c.crossAxisExtent / c.viewportMainAxisExtent;
-        final cols = (baseColumns * (ratio / baseRatio))
-            .clamp(minColumns, maxColumns)
-            .round();
+        final cols = _resolveCrossAxisCount(
+          ratio: ratio,
+          baseColumns: baseColumns,
+          baseRows: baseRows,
+          baseRatio: baseRatio,
+          minColumns: minColumns,
+          maxColumns: maxColumns,
+        );
         final gap = (c.crossAxisExtent / cols) * gapRatio;
 
         return SliverGrid(
@@ -160,7 +205,8 @@ class MasonryAspectDrivenGrid extends StatelessWidget {
     super.key,
     required this.itemCount,
     required this.itemBuilder,
-    this.baseColumns = _GridDefaults.baseColumns,
+    this.baseColumns,
+    this.baseRows,
     this.baseRatio = _GridDefaults.baseRatio,
     this.gapRatio = _GridDefaults.gapRatio,
     this.minColumns = _GridDefaults.minColumns,
@@ -172,7 +218,8 @@ class MasonryAspectDrivenGrid extends StatelessWidget {
 
   final int itemCount;
   final IndexedWidgetBuilder itemBuilder;
-  final int baseColumns;
+  final int? baseColumns;
+  final int? baseRows;
   final double baseRatio;
   final double gapRatio;
   final int minColumns;
@@ -190,9 +237,14 @@ class MasonryAspectDrivenGrid extends StatelessWidget {
           'MasonryAspectDrivenGrid 需要父容器在两个轴上都有界',
         );
         final ratio = c.maxWidth / c.maxHeight;
-        final cols = (baseColumns * (ratio / baseRatio))
-            .clamp(minColumns, maxColumns)
-            .round();
+        final cols = _resolveCrossAxisCount(
+          ratio: ratio,
+          baseColumns: baseColumns,
+          baseRows: baseRows,
+          baseRatio: baseRatio,
+          minColumns: minColumns,
+          maxColumns: maxColumns,
+        );
         final gap = (c.maxWidth / cols) * gapRatio;
 
         return MasonryGridView.count(

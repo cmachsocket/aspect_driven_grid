@@ -3,6 +3,7 @@
 纯比例驱动的 Flutter 网格：列数与间距都由容器宽高比派生，零硬编码像素。
 
 - 列数 = `baseColumns × 容器宽高比 / baseRatio`，限位在 `minColumns`~`maxColumns`
+- 或改用 `baseRows` 反转轴：列数 = `baseRows × baseRatio / 容器宽高比`，同样限位
 - 间距 = 列宽 × `gapRatio`
 - item 宽高比由调用方传 `childAspectRatio`
 
@@ -32,7 +33,8 @@ AspectDrivenGrid(
 
 | 参数 | 默认值 | 说明 |
 | --- | --- | --- |
-| `baseColumns` | `2` | 基准宽高比下的列数 |
+| `baseColumns` | `2` | 基准宽高比下的列数；与 `baseRows` 二选一 |
+| `baseRows` | `null` | 基准宽高比下的行数；设置后反转轴，与 `baseColumns` 二选一 |
 | `baseRatio` | `1.0` | 基准宽高比 |
 | `gapRatio` | `0.04` | 间距 = 列宽 × 该比例 |
 | `childAspectRatio` | `1.0` | item 自身宽/高比（仅 `AspectDrivenGrid` / `SliverAspectDrivenGrid`） |

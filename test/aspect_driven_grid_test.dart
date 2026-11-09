@@ -93,6 +93,74 @@ void main() {
       expect(find.text('item-2'), findsOneWidget);
       expect(find.text('item-3'), findsNothing);
     });
+
+    testWidgets('baseRows 在基准宽高比下按行数派生列数', (tester) async {
+      // 宽高比 1.0 → 基准 2 行 → 2 列
+      await tester.pumpWidget(
+        wrap(
+          width: 200,
+          height: 200,
+          child: AspectDrivenGrid(
+            itemCount: 6,
+            baseRows: 2,
+            itemBuilder: (context, index) => const SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      expect(delegateOf(tester).crossAxisCount, 2);
+    });
+
+    testWidgets('baseRows 反转轴：宽容器列数更少', (tester) async {
+      // 宽高比 2.0 → 2 × 1.0 / 2.0 = 1 列
+      await tester.pumpWidget(
+        wrap(
+          width: 400,
+          height: 200,
+          child: AspectDrivenGrid(
+            itemCount: 6,
+            baseRows: 2,
+            itemBuilder: (context, index) => const SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      expect(delegateOf(tester).crossAxisCount, 1);
+    });
+
+    testWidgets('baseRows 同样受列数限位约束', (tester) async {
+      // 宽高比 0.1 → 2 × 1.0 / 0.1 = 20 → 截到上限 6
+      await tester.pumpWidget(
+        wrap(
+          width: 100,
+          height: 1000,
+          child: AspectDrivenGrid(
+            itemCount: 6,
+            baseRows: 2,
+            itemBuilder: (context, index) => const SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      expect(delegateOf(tester).crossAxisCount, 6);
+    });
+
+    testWidgets('baseColumns 与 baseRows 不能同时设置', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          width: 400,
+          height: 200,
+          child: AspectDrivenGrid(
+            itemCount: 6,
+            baseColumns: 2,
+            baseRows: 2,
+            itemBuilder: (context, index) => const SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isAssertionError);
+    });
   });
 
   group('MasonryAspectDrivenGrid', () {
@@ -115,6 +183,28 @@ void main() {
           masonry.gridDelegate
               as SliverSimpleGridDelegateWithFixedCrossAxisCount;
       expect(delegate.crossAxisCount, 4);
+    });
+
+    testWidgets('baseRows 同样适用于瀑布流', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          width: 400,
+          height: 200,
+          child: MasonryAspectDrivenGrid(
+            itemCount: 4,
+            baseRows: 2,
+            itemBuilder: (context, index) => const SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      final masonry = tester.widget<MasonryGridView>(
+        find.byType(MasonryGridView),
+      );
+      final delegate =
+          masonry.gridDelegate
+              as SliverSimpleGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, 1);
     });
   });
 }

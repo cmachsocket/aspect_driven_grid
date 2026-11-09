@@ -1,6 +1,6 @@
 name: aspect_driven_grid
 description: A Flutter grid whose column count and spacing are derived from the container's aspect ratio, with zero hardcoded pixel values.
-version: 0.1.0
+version: 0.2.0
 publish_to: 'none'
 
 environment:
